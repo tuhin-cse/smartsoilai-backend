@@ -53,6 +53,9 @@ export class AuthService {
     if (!user.isVerified) {
       throw new UnauthorizedException(
         'Please verify your email before signing in',
+        {
+          description: 'EMAIL_NOT_VERIFIED',
+        },
       );
     }
 
