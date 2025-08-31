@@ -48,4 +48,25 @@ export class ConfigService {
   get isTest(): boolean {
     return this.environment === 'test';
   }
+
+  // Cloudflare R2 Configuration
+  get cloudflareR2Endpoint(): string {
+    return this.configService.get<string>('CLOUDFLARE_R2_ENDPOINT')!;
+  }
+
+  get cloudflareR2AccessKeyId(): string {
+    return this.configService.get<string>('CLOUDFLARE_R2_ACCESS_KEY_ID')!;
+  }
+
+  get cloudflareR2SecretAccessKey(): string {
+    return this.configService.get<string>('CLOUDFLARE_R2_SECRET_ACCESS_KEY')!;
+  }
+
+  get cloudflareR2BucketName(): string {
+    return this.configService.get<string>('CLOUDFLARE_R2_BUCKET_NAME')!;
+  }
+
+  get cloudflareR2PublicUrl(): string {
+    return this.configService.get<string>('CLOUDFLARE_R2_PUBLIC_URL')!;
+  }
 }

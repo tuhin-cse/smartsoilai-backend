@@ -14,13 +14,43 @@ datasource db {
 }
 
 model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  password     String
+  gender       String?
+  profileImage String?
+  isActive     Boolean  @default(true)
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  otpCodes Otp[]
+
+  @@map("users")
+}
+
+model Otp {
   id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  isActive  Boolean  @default(true)
+  code      String
+  type      OtpType
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("users")
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otps")
+}
+
+enum OtpType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  PHONE_VERIFICATION
+
+  @@map("otp_types")
 }

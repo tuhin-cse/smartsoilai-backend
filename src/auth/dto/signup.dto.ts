@@ -1,5 +1,5 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SignupDto {
   @ApiProperty({
@@ -18,6 +18,15 @@ export class SignupDto {
   @IsNotEmpty()
   email: string;
 
+  @ApiPropertyOptional({
+    description: 'Gender of the user',
+    example: 'male',
+    enum: ['male', 'female', 'other'],
+  })
+  @IsString()
+  @IsOptional()
+  gender?: string;
+
   @ApiProperty({
     description: 'User password',
     example: 'password123',
@@ -25,5 +34,6 @@ export class SignupDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
   password: string;
 }

@@ -6,19 +6,26 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
+import { OtpService } from './otp.service';
+import { FileUploadService } from '../common/services/file-upload.service';
+import { OtpType, User } from './types/user.type';
 import * as bcrypt from 'bcryptjs';
 import { SigninDto } from './dto/signin.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { User } from './types/user.type';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
+import { CreateUserDto } from '../users/dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private otpService: OtpService,
+    private fileUploadService: FileUploadService,
   ) {}
 
   async signin(signinDto: SigninDto) {
@@ -41,15 +48,74 @@ export class AuthService {
       throw new UnauthorizedException('User account is not active');
     }
 
+    if (!user.isVerified) {
+      throw new UnauthorizedException(
+        'Please verify your email before signing in',
+      );
+    }
+
     return this.generateTokens(user);
   }
 
-  async signup(createUserDto: any) {
+  async signup(createUserDto: CreateUserDto) {
     const user = await this.usersService.create(createUserDto);
     if (!user) {
       return null;
     }
-    return this.generateTokens(user);
+
+    // Generate OTP for email verification
+    const otpCode = await this.otpService.createOtp(
+      user.id,
+      OtpType.EMAIL_VERIFICATION,
+    );
+
+    return {
+      message:
+        'User registered successfully. Please verify your email with the OTP sent.',
+      user,
+      // Remove this in production - OTP should be sent via email
+      otp: otpCode,
+    };
+  }
+
+  async verifySignupOtp(verifyOtpDto: VerifyOtpDto) {
+    // Verify OTP
+    await this.otpService.verifyOtpByEmail(
+      verifyOtpDto.email,
+      verifyOtpDto.otp,
+      OtpType.EMAIL_VERIFICATION,
+    );
+
+    // Get user and verify email
+    const user = await this.usersService.findByEmail(verifyOtpDto.email);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const verifiedUser = await this.usersService.verifyUserEmail(user.id);
+    return this.generateTokens(verifiedUser);
+  }
+
+  async resendSignupOtp(resendOtpDto: ResendOtpDto) {
+    const user = await this.usersService.findByEmail(resendOtpDto.email);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isVerified) {
+      throw new BadRequestException('User is already verified');
+    }
+
+    // Generate new OTP
+    const otpCode = await this.otpService.resendOtpByEmail(
+      resendOtpDto.email,
+      OtpType.EMAIL_VERIFICATION,
+    );
+
+    // TODO: Send OTP via email
+    // For development, return the OTP (remove in production)
+    return { message: 'OTP sent successfully', otp: otpCode };
   }
 
   generateTokens(user: Omit<User, 'password'>) {
@@ -76,7 +142,10 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        gender: user.gender,
+        profileImage: user.profileImage,
         isActive: user.isActive,
+        isVerified: user.isVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -96,8 +165,10 @@ export class AuthService {
       }
 
       const user = await this.usersService.findByEmail(payload.email);
-      if (!user || !user.isActive) {
-        throw new UnauthorizedException('User not found or inactive');
+      if (!user || !user.isActive || !user.isVerified) {
+        throw new UnauthorizedException(
+          'User not found, inactive, or not verified',
+        );
       }
 
       return this.generateTokens(user);
@@ -111,45 +182,37 @@ export class AuthService {
 
     if (!user) {
       // Don't reveal if email exists or not for security
-      return { message: 'If the email exists, a reset link has been sent' };
+      return { message: 'If the email exists, a reset code has been sent' };
     }
 
-    // Generate reset token
-    const resetToken = this.jwtService.sign(
-      {
-        id: user.id,
-        email: user.email,
-        type: 'reset',
-      },
-      {
-        expiresIn: '1h',
-      },
+    // Generate OTP for password reset
+    const otpCode = await this.otpService.createOtp(
+      user.id,
+      OtpType.PASSWORD_RESET,
     );
 
-    // TODO: Send email with reset token
-    // For now, return the token (in production, this should be sent via email)
+    // TODO: Send OTP via email
+    // For development, return the OTP (remove in production)
     return {
-      message: 'If the email exists, a reset link has been sent',
-      resetToken, // Remove this in production
+      message: 'If the email exists, a reset code has been sent',
+      otp: otpCode, // Remove this in production
     };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
     try {
-      const payload: {
-        id: string;
-        email: string;
-        type: string;
-      } = this.jwtService.verify(resetPasswordDto.token);
-
-      if (payload.type !== 'reset') {
-        throw new UnauthorizedException('Invalid token type');
-      }
-
-      const user = await this.usersService.findByEmail(payload.email);
+      // First verify the OTP/token
+      const user = await this.usersService.findByEmail(resetPasswordDto.email);
       if (!user) {
         throw new NotFoundException('User not found');
       }
+
+      // Verify OTP
+      await this.otpService.verifyOtp(
+        user.id,
+        resetPasswordDto.token,
+        OtpType.PASSWORD_RESET,
+      );
 
       // Hash new password
       const hashedPassword = await bcrypt.hash(
@@ -161,13 +224,40 @@ export class AuthService {
       await this.usersService.updatePassword(user.id, hashedPassword);
 
       return { message: 'Password reset successfully' };
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      throw new BadRequestException('Invalid or expired reset token');
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new BadRequestException('Invalid or expired reset code');
     }
   }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
     return this.usersService.updateProfile(userId, updateProfileDto);
+  }
+
+  async uploadProfileImage(userId: string, file: Express.Multer.File) {
+    // Get current user to check if they have an existing profile image
+    const currentUser = await this.usersService.findOne(userId);
+    
+    // Delete old profile image if exists
+    if (currentUser.profileImage) {
+      await this.fileUploadService.deleteProfileImage(currentUser.profileImage);
+    }
+
+    // Upload new profile image
+    const imagePath = await this.fileUploadService.saveProfileImage(file, userId);
+
+    // Update user with new profile image path
+    const updatedUser = await this.usersService.updateProfileImage(userId, imagePath);
+
+    return {
+      message: 'Profile image uploaded successfully',
+      profileImage: imagePath,
+      user: updatedUser,
+    };
   }
 }

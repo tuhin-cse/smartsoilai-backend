@@ -1,11 +1,23 @@
-import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
+import { 
+  Body, 
+  Controller, 
+  Get, 
+  HttpCode,
+  Post, 
+  Put, 
+  UseGuards, 
+  UseInterceptors, 
+  UploadedFile 
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { SigninDto } from './dto/signin.dto';
@@ -14,6 +26,9 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
+import { UploadProfileImageDto } from './dto/upload-profile-image.dto';
 import { GetUser } from './decorators/get-user.decorator';
 import { User } from './types/user.type';
 
@@ -23,6 +38,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('signin')
+  @HttpCode(200)
   @ApiOperation({ summary: 'User signin' })
   @ApiBody({ type: SigninDto })
   @ApiResponse({
@@ -31,7 +47,7 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        authToken: { type: 'string' },
+        accessToken: { type: 'string' },
         refreshToken: { type: 'string' },
         user: {
           type: 'object',
@@ -39,7 +55,10 @@ export class AuthController {
             id: { type: 'string' },
             name: { type: 'string' },
             email: { type: 'string' },
+            gender: { type: 'string' },
+            profileImage: { type: 'string' },
             isActive: { type: 'boolean' },
+            isVerified: { type: 'boolean' },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
           },
@@ -47,7 +66,10 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials or email not verified',
+  })
   async signin(@Body() signinDto: SigninDto) {
     return this.authService.signin(signinDto);
   }
@@ -57,22 +79,28 @@ export class AuthController {
   @ApiBody({ type: SignupDto })
   @ApiResponse({
     status: 201,
-    description: 'User registered successfully',
+    description:
+      'User registered successfully. OTP sent for email verification.',
     schema: {
       type: 'object',
       properties: {
-        authToken: { type: 'string' },
-        refreshToken: { type: 'string' },
+        message: { type: 'string' },
         user: {
           type: 'object',
           properties: {
             id: { type: 'string' },
             name: { type: 'string' },
             email: { type: 'string' },
+            gender: { type: 'string' },
             isActive: { type: 'boolean' },
+            isVerified: { type: 'boolean' },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
           },
+        },
+        otp: {
+          type: 'string',
+          description: 'OTP for verification (development only)',
         },
       },
     },
@@ -80,6 +108,61 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'User already exists' })
   async signup(@Body() signupDto: SignupDto) {
     return this.authService.signup(signupDto);
+  }
+
+  @Post('verify-signup-otp')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Verify OTP after signup' })
+  @ApiBody({ type: VerifyOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Email verified successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+        user: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            email: { type: 'string' },
+            gender: { type: 'string' },
+            profileImage: { type: 'string' },
+            isActive: { type: 'boolean' },
+            isVerified: { type: 'boolean' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  async verifySignupOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.authService.verifySignupOtp(verifyOtpDto);
+  }
+
+  @Post('resend-signup-otp')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Resend OTP for email verification' })
+  @ApiBody({ type: ResendOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP resent successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+        otp: { type: 'string', description: 'OTP code (development only)' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'User already verified' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async resendSignupOtp(@Body() resendOtpDto: ResendOtpDto) {
+    return this.authService.resendSignupOtp(resendOtpDto);
   }
 
   @Get('profile')
@@ -92,9 +175,14 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string' },
+        id: { type: 'string' },
+        name: { type: 'string' },
         email: { type: 'string' },
-        username: { type: 'string' },
+        gender: { type: 'string' },
+        isActive: { type: 'boolean' },
+        isVerified: { type: 'boolean' },
+        createdAt: { type: 'string', format: 'date-time' },
+        updatedAt: { type: 'string', format: 'date-time' },
       },
     },
   })
@@ -104,6 +192,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
   @ApiBody({ type: RefreshTokenDto })
   @ApiResponse({
@@ -120,7 +209,10 @@ export class AuthController {
             id: { type: 'string' },
             name: { type: 'string' },
             email: { type: 'string' },
+            gender: { type: 'string' },
+            profileImage: { type: 'string' },
             isActive: { type: 'boolean' },
+            isVerified: { type: 'boolean' },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
           },
@@ -134,15 +226,17 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  @ApiOperation({ summary: 'Request password reset' })
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Request password reset OTP' })
   @ApiBody({ type: ForgotPasswordDto })
   @ApiResponse({
     status: 200,
-    description: 'Password reset email sent (if email exists)',
+    description: 'Password reset OTP sent (if email exists)',
     schema: {
       type: 'object',
       properties: {
         message: { type: 'string' },
+        otp: { type: 'string', description: 'OTP code (development only)' },
       },
     },
   })
@@ -151,7 +245,8 @@ export class AuthController {
   }
 
   @Post('reset-password')
-  @ApiOperation({ summary: 'Reset password using reset token' })
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Reset password using OTP' })
   @ApiBody({ type: ResetPasswordDto })
   @ApiResponse({
     status: 200,
@@ -163,7 +258,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Invalid or expired reset token' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
@@ -182,7 +277,10 @@ export class AuthController {
         id: { type: 'string' },
         name: { type: 'string' },
         email: { type: 'string' },
+        gender: { type: 'string' },
+        profileImage: { type: 'string' },
         isActive: { type: 'boolean' },
+        isVerified: { type: 'boolean' },
         createdAt: { type: 'string', format: 'date-time' },
         updatedAt: { type: 'string', format: 'date-time' },
       },
@@ -195,5 +293,47 @@ export class AuthController {
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
     return this.authService.updateProfile(user.id, updateProfileDto);
+  }
+
+  @Post('upload-profile-image')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload profile image' })
+  @ApiBody({ type: UploadProfileImageDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile image uploaded successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+        profileImage: { type: 'string' },
+        user: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            email: { type: 'string' },
+            gender: { type: 'string' },
+            profileImage: { type: 'string' },
+            isActive: { type: 'boolean' },
+            isVerified: { type: 'boolean' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid file or file too large' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async uploadProfileImage(
+    @GetUser() user: User,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.authService.uploadProfileImage(user.id, file);
   }
 }

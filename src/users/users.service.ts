@@ -17,7 +17,7 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto) {
-    const { name, email, password } = createUserDto;
+    const { name, email, password, gender } = createUserDto;
 
     // Check if user already exists
     const existingUser = await this.prisma.user.findFirst({
@@ -36,17 +36,43 @@ export class UsersService {
       this.configService.bcryptSaltRounds,
     );
 
+    // Create user
     return this.prisma.user.create({
       data: {
         email,
         name,
         password: hashedPassword,
+        gender,
+        isVerified: false,
       },
       select: {
         id: true,
         name: true,
         email: true,
+        gender: true,
+        profileImage: true,
         isActive: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async verifyUserEmail(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        isVerified: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        gender: true,
+        profileImage: true,
+        isActive: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -59,7 +85,10 @@ export class UsersService {
         id: true,
         email: true,
         name: true,
+        gender: true,
+        profileImage: true,
         isActive: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -73,7 +102,10 @@ export class UsersService {
         id: true,
         email: true,
         name: true,
+        gender: true,
+        profileImage: true,
         isActive: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -89,6 +121,18 @@ export class UsersService {
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        password: true,
+        gender: true,
+        profileImage: true,
+        isActive: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
@@ -116,7 +160,10 @@ export class UsersService {
         id: true,
         email: true,
         name: true,
+        gender: true,
+        profileImage: true,
         isActive: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -144,14 +191,17 @@ export class UsersService {
         id: true,
         email: true,
         name: true,
+        gender: true,
+        profileImage: true,
         isActive: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
       },
     });
   }
 
-  async updateProfile(id: string, updateProfileDto: { name?: string }) {
+  async updateProfile(id: string, updateProfileDto: { name?: string; gender?: string }) {
     const user = await this.findOne(id);
 
     if (!user) {
@@ -165,7 +215,34 @@ export class UsersService {
         id: true,
         email: true,
         name: true,
+        gender: true,
+        profileImage: true,
         isActive: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async updateProfileImage(id: string, profileImagePath: string) {
+    const user = await this.findOne(id);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { profileImage: profileImagePath },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        gender: true,
+        profileImage: true,
+        isActive: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
       },
