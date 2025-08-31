@@ -15,4 +15,18 @@ export default () => ({
     version: process.env.APP_VERSION || '1.0.0',
     environment: process.env.NODE_ENV || 'development',
   },
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    clientId: process.env.FIREBASE_CLIENT_ID,
+  },
+  cloudflareR2: {
+    endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    bucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+    publicUrl: process.env.CLOUDFLARE_R2_PUBLIC_URL,
+  },
 });

@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { OtpService } from './otp.service';
-import { FileUploadService } from '../common/services/file-upload.service';
+import { FileUploadService, FirebaseService } from '../common/services';
 import { OtpType, User } from './types/user.type';
 import * as bcrypt from 'bcryptjs';
 import { SigninDto } from './dto/signin.dto';
@@ -18,6 +18,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
+import { SocialLoginDto } from './dto/social-login.dto';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +27,7 @@ export class AuthService {
     private jwtService: JwtService,
     private otpService: OtpService,
     private fileUploadService: FileUploadService,
+    private firebaseService: FirebaseService,
   ) {}
 
   async signin(signinDto: SigninDto) {
@@ -242,22 +244,94 @@ export class AuthService {
   async uploadProfileImage(userId: string, file: Express.Multer.File) {
     // Get current user to check if they have an existing profile image
     const currentUser = await this.usersService.findOne(userId);
-    
+
     // Delete old profile image if exists
     if (currentUser.profileImage) {
       await this.fileUploadService.deleteProfileImage(currentUser.profileImage);
     }
 
     // Upload new profile image
-    const imagePath = await this.fileUploadService.saveProfileImage(file, userId);
+    const imagePath = await this.fileUploadService.saveProfileImage(
+      file,
+      userId,
+    );
 
     // Update user with new profile image path
-    const updatedUser = await this.usersService.updateProfileImage(userId, imagePath);
+    const updatedUser = await this.usersService.updateProfileImage(
+      userId,
+      imagePath,
+    );
 
     return {
       message: 'Profile image uploaded successfully',
       profileImage: imagePath,
       user: updatedUser,
     };
+  }
+
+  async socialLogin(socialLoginDto: SocialLoginDto) {
+    try {
+      // Verify Firebase ID token
+      const decodedToken = await this.firebaseService.verifyIdToken(
+        socialLoginDto.idToken,
+      );
+
+      // Extract user information from Firebase token
+      const { uid, email, name } = decodedToken;
+
+      if (!email) {
+        throw new BadRequestException('Email is required for social login');
+      }
+
+      // Check if user already exists
+      let user = await this.usersService.findByEmail(email);
+
+      if (user) {
+        // User exists, check if active and verified
+        if (!user.isActive) {
+          throw new UnauthorizedException('User account is not active');
+        }
+
+        // For social login users, we auto-verify them
+        if (!user.isVerified) {
+          const verifiedUser = await this.usersService.verifyUserEmail(user.id);
+          return this.generateTokens(verifiedUser);
+        }
+
+        // Remove password from user object before generating tokens
+        const { password: _, ...userWithoutPassword } = user;
+        return this.generateTokens(userWithoutPassword);
+      } else {
+        // User doesn't exist, create new user
+        const createUserDto: CreateUserDto = {
+          name: name || email.split('@')[0] || 'User', // Use email prefix if name not provided
+          email,
+          password: uid, // Use Firebase UID as password (user won't need it for social login)
+          gender: undefined, // Can be updated later
+        };
+
+        // Create user
+        const newUser = await this.usersService.create(createUserDto);
+
+        // Auto-verify social login users
+        const verifiedUser = await this.usersService.verifyUserEmail(
+          newUser.id,
+        );
+
+        // If user has a profile picture from social login, we could update it here
+        // For now, we'll leave it as null and they can upload later
+
+        return this.generateTokens(verifiedUser);
+      }
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      console.error('Social login error:', error);
+      throw new UnauthorizedException('Social login failed');
+    }
   }
 }

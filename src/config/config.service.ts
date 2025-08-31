@@ -51,22 +51,43 @@ export class ConfigService {
 
   // Cloudflare R2 Configuration
   get cloudflareR2Endpoint(): string {
-    return this.configService.get<string>('CLOUDFLARE_R2_ENDPOINT')!;
+    return this.configService.get<string>('cloudflareR2.endpoint')!;
   }
 
   get cloudflareR2AccessKeyId(): string {
-    return this.configService.get<string>('CLOUDFLARE_R2_ACCESS_KEY_ID')!;
+    return this.configService.get<string>('cloudflareR2.accessKeyId')!;
   }
 
   get cloudflareR2SecretAccessKey(): string {
-    return this.configService.get<string>('CLOUDFLARE_R2_SECRET_ACCESS_KEY')!;
+    return this.configService.get<string>('cloudflareR2.secretAccessKey')!;
   }
 
   get cloudflareR2BucketName(): string {
-    return this.configService.get<string>('CLOUDFLARE_R2_BUCKET_NAME')!;
+    return this.configService.get<string>('cloudflareR2.bucketName')!;
   }
 
   get cloudflareR2PublicUrl(): string {
-    return this.configService.get<string>('CLOUDFLARE_R2_PUBLIC_URL')!;
+    return this.configService.get<string>('cloudflareR2.publicUrl')!;
+  }
+
+  // Firebase Configuration
+  get firebaseProjectId(): string {
+    return this.configService.get<string>('firebase.projectId')!;
+  }
+
+  get firebasePrivateKeyId(): string {
+    return this.configService.get<string>('firebase.privateKeyId')!;
+  }
+
+  get firebasePrivateKey(): string {
+    return this.configService.get<string>('firebase.privateKey')!;
+  }
+
+  get firebaseClientEmail(): string {
+    return this.configService.get<string>('firebase.clientEmail')!;
+  }
+
+  get firebaseClientId(): string {
+    return this.configService.get<string>('firebase.clientId')!;
   }
 }

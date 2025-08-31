@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '../config/config.module';
-import { FileUploadService } from './services';
+import { FileUploadService, FirebaseService } from './services';
 
 @Module({
   imports: [ConfigModule],
-  providers: [FileUploadService],
-  exports: [FileUploadService],
+  providers: [FileUploadService, FirebaseService],
+  exports: [FileUploadService, FirebaseService],
 })
 export class CommonModule {}

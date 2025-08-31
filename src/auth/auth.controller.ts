@@ -1,13 +1,13 @@
-import { 
-  Body, 
-  Controller, 
-  Get, 
+import {
+  Body,
+  Controller,
+  Get,
   HttpCode,
-  Post, 
-  Put, 
-  UseGuards, 
-  UseInterceptors, 
-  UploadedFile 
+  Post,
+  Put,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -22,6 +22,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { SigninDto } from './dto/signin.dto';
 import { SignupDto } from './dto/signup.dto';
+import { SocialLoginDto } from './dto/social-login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -72,6 +73,43 @@ export class AuthController {
   })
   async signin(@Body() signinDto: SigninDto) {
     return this.authService.signin(signinDto);
+  }
+
+  @Post('social-login')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Social login with Firebase ID token' })
+  @ApiBody({ type: SocialLoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Social login successful',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+        user: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            email: { type: 'string' },
+            gender: { type: 'string' },
+            profileImage: { type: 'string' },
+            isActive: { type: 'boolean' },
+            isVerified: { type: 'boolean' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid Firebase ID token or social login failed',
+  })
+  async socialLogin(@Body() socialLoginDto: SocialLoginDto) {
+    return this.authService.socialLogin(socialLoginDto);
   }
 
   @Post('signup')
