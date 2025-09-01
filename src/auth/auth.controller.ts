@@ -217,6 +217,7 @@ export class AuthController {
         name: { type: 'string' },
         email: { type: 'string' },
         gender: { type: 'string' },
+        profileImage: { type: 'string' },
         isActive: { type: 'boolean' },
         isVerified: { type: 'boolean' },
         createdAt: { type: 'string', format: 'date-time' },

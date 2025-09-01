@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
 import { ConfigModule } from './config/config.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from './config/config.service';
@@ -14,6 +15,7 @@ import { ConfigService } from './config/config.service';
     PrismaModule,
     UsersModule,
     AuthModule,
+    ChatModule,
     JwtModule.registerAsync({
       global: true,
       useFactory: (configService: ConfigService) => ({

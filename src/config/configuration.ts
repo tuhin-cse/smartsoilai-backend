@@ -29,4 +29,13 @@ export default () => ({
     bucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME,
     publicUrl: process.env.CLOUDFLARE_R2_PUBLIC_URL,
   },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+    apiUrl: process.env.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions',
+    audioUrl: process.env.OPENAI_AUDIO_URL || 'https://api.openai.com/v1/audio/transcriptions',
+  },
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    apiUrl: process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/chat/completions',
+  },
 });
