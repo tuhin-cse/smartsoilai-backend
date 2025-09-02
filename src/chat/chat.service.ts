@@ -451,33 +451,6 @@ Remember: Great harvests begin underground. Help farmers unlock their soil's pot
     }
   }
 
-  // Legacy method for backward compatibility
-  async getChatHistory(userId: string, limit: number = 50, offset: number = 0) {
-    try {
-      const conversations = await this.prismaService.chatConversation.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
-        select: {
-          id: true,
-          userMessage: true,
-          assistantMessage: true,
-          messageType: true,
-          createdAt: true,
-        },
-      });
-
-      return conversations;
-    } catch (error) {
-      this.logger.error('Error fetching chat history:', error);
-      throw new HttpException(
-        'Failed to fetch chat history',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
   // Fertilizer Calculation Method
   async calculateFertilizer(fertilizerData: FertilizerCalculationDto) {
     const { sensorData, calculationData } = fertilizerData;

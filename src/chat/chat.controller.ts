@@ -18,17 +18,17 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
-import { 
-  ChatMessageDto, 
-  ChatResponseDto, 
-  FertilizerCalculationDto, 
-  FertilizerCalculationResponseDto,
-  CropRecommendationRequestDto,
-  CropRecommendationResponseDto,
+import {
+  ChatMessageDto,
+  ChatResponseDto,
+  ConversationDto,
+  ConversationListDto,
   CropDiseaseAnalysisRequestDto,
   CropDiseaseAnalysisResponseDto,
-  ConversationDto,
-  ConversationListDto
+  CropRecommendationRequestDto,
+  CropRecommendationResponseDto,
+  FertilizerCalculationDto,
+  FertilizerCalculationResponseDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -41,9 +41,10 @@ export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post('message')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Send a message to the AI assistant',
-    description: 'Send a text, voice, or image message to the SoilSense AI assistant. Supports ChatGPT-like conversations with automatic conversation management.'
+    description:
+      'Send a text, voice, or image message to the SoilSense AI assistant. Supports ChatGPT-like conversations with automatic conversation management.',
   })
   @ApiResponse({
     status: 200,
@@ -52,27 +53,30 @@ export class ChatController {
     schema: {
       type: 'object',
       properties: {
-        message: { 
-          type: 'string', 
-          example: 'Based on your soil conditions, I recommend applying lime to increase pH. Here are the steps...' 
+        message: {
+          type: 'string',
+          example:
+            'Based on your soil conditions, I recommend applying lime to increase pH. Here are the steps...',
         },
-        messageType: { 
-          type: 'string', 
+        messageType: {
+          type: 'string',
           example: 'text',
-          description: 'Type of response: text, voice_response, or image_analysis'
+          description:
+            'Type of response: text, voice_response, or image_analysis',
         },
-        timestamp: { 
-          type: 'string', 
+        timestamp: {
+          type: 'string',
           format: 'date-time',
-          example: '2024-01-15T10:30:00Z'
+          example: '2024-01-15T10:30:00Z',
         },
-        conversationId: { 
-          type: 'string', 
+        conversationId: {
+          type: 'string',
           example: 'conv_123abc',
-          description: 'ID of the conversation (created automatically if not provided)'
-        }
-      }
-    }
+          description:
+            'ID of the conversation (created automatically if not provided)',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -81,10 +85,13 @@ export class ChatController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 400 },
-        message: { type: 'string', example: 'Invalid message type or missing required data' },
-        error: { type: 'string', example: 'Bad Request' }
-      }
-    }
+        message: {
+          type: 'string',
+          example: 'Invalid message type or missing required data',
+        },
+        error: { type: 'string', example: 'Bad Request' },
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -92,7 +99,8 @@ export class ChatController {
   })
   @ApiResponse({
     status: 404,
-    description: 'Conversation not found - When conversationId is provided but doesn\'t exist or belong to user',
+    description:
+      "Conversation not found - When conversationId is provided but doesn't exist or belong to user",
   })
   @ApiResponse({
     status: 503,
@@ -101,10 +109,13 @@ export class ChatController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 503 },
-        message: { type: 'string', example: 'AI service temporarily unavailable' },
-        error: { type: 'string', example: 'Service Unavailable' }
-      }
-    }
+        message: {
+          type: 'string',
+          example: 'AI service temporarily unavailable',
+        },
+        error: { type: 'string', example: 'Service Unavailable' },
+      },
+    },
   })
   async sendMessage(
     @GetUser('id') userId: string,
@@ -113,57 +124,25 @@ export class ChatController {
     return this.chatService.sendMessage(userId, chatMessageDto);
   }
 
-  @Get('history')
-  @ApiOperation({ 
-    summary: 'Get chat conversation history (Legacy)',
-    description: 'Legacy endpoint for backward compatibility. Use /conversations instead.'
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: Number,
-    description: 'Number of conversations to retrieve (default: 50)',
-  })
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    type: Number,
-    description: 'Number of conversations to skip (default: 0)',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Chat history retrieved successfully',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
-  })
-  async getChatHistory(
-    @GetUser('id') userId: string,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
-    @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
-  ) {
-    return this.chatService.getChatHistory(userId, limit || 50, offset || 0);
-  }
-
   @Get('conversations')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get all user conversations',
-    description: 'Retrieve a list of all conversations for the authenticated user with pagination support'
+    description:
+      'Retrieve a list of all conversations for the authenticated user with pagination support',
   })
   @ApiQuery({
     name: 'limit',
     required: false,
     type: Number,
     description: 'Number of conversations to retrieve (default: 50, max: 100)',
-    example: 20
+    example: 20,
   })
   @ApiQuery({
     name: 'offset',
     required: false,
     type: Number,
     description: 'Number of conversations to skip for pagination (default: 0)',
-    example: 0
+    example: 0,
   })
   @ApiResponse({
     status: 200,
@@ -179,10 +158,13 @@ export class ChatController {
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
           messageCount: { type: 'number', example: 5 },
-          lastMessage: { type: 'string', example: 'How can I improve my soil pH level?' }
-        }
-      }
-    }
+          lastMessage: {
+            type: 'string',
+            example: 'How can I improve my soil pH level?',
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -198,19 +180,24 @@ export class ChatController {
     @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
   ): Promise<ConversationListDto[]> {
     const validatedLimit = Math.min(limit || 50, 100); // Cap at 100
-    return this.chatService.getConversations(userId, validatedLimit, offset || 0);
+    return this.chatService.getConversations(
+      userId,
+      validatedLimit,
+      offset || 0,
+    );
   }
 
   @Get('conversations/:conversationId')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get conversation details',
-    description: 'Retrieve a specific conversation with all its messages for the authenticated user'
+    description:
+      'Retrieve a specific conversation with all its messages for the authenticated user',
   })
   @ApiParam({
     name: 'conversationId',
     description: 'Unique identifier of the conversation',
     type: 'string',
-    example: 'conv_123abc'
+    example: 'conv_123abc',
   })
   @ApiResponse({
     status: 200,
@@ -230,15 +217,22 @@ export class ChatController {
             type: 'object',
             properties: {
               id: { type: 'string', example: 'msg_789ghi' },
-              userMessage: { type: 'string', example: 'How can I improve my soil pH level?' },
-              assistantMessage: { type: 'string', example: 'To improve soil pH, you can add lime for acidic soil...' },
+              userMessage: {
+                type: 'string',
+                example: 'How can I improve my soil pH level?',
+              },
+              assistantMessage: {
+                type: 'string',
+                example:
+                  'To improve soil pH, you can add lime for acidic soil...',
+              },
               messageType: { type: 'string', enum: ['TEXT', 'VOICE', 'IMAGE'] },
-              createdAt: { type: 'string', format: 'date-time' }
-            }
-          }
-        }
-      }
-    }
+              createdAt: { type: 'string', format: 'date-time' },
+            },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -260,15 +254,16 @@ export class ChatController {
   }
 
   @Delete('conversations/:conversationId')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Delete a conversation',
-    description: 'Permanently delete a conversation and all its messages. This action cannot be undone.'
+    description:
+      'Permanently delete a conversation and all its messages. This action cannot be undone.',
   })
   @ApiParam({
     name: 'conversationId',
     description: 'Unique identifier of the conversation to delete',
     type: 'string',
-    example: 'conv_123abc'
+    example: 'conv_123abc',
   })
   @ApiResponse({
     status: 200,
@@ -277,9 +272,12 @@ export class ChatController {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Conversation deleted successfully' }
-      }
-    }
+        message: {
+          type: 'string',
+          example: 'Conversation deleted successfully',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -326,7 +324,9 @@ export class ChatController {
   }
 
   @Post('crop-recommendations')
-  @ApiOperation({ summary: 'Get crop recommendations based on soil sensor data' })
+  @ApiOperation({
+    summary: 'Get crop recommendations based on soil sensor data',
+  })
   @ApiResponse({
     status: 200,
     description: 'Crop recommendations retrieved successfully',
@@ -347,7 +347,9 @@ export class ChatController {
   async getCropRecommendations(
     @Body() cropRecommendationRequestDto: CropRecommendationRequestDto,
   ): Promise<CropRecommendationResponseDto> {
-    return this.chatService.getCropRecommendations(cropRecommendationRequestDto);
+    return this.chatService.getCropRecommendations(
+      cropRecommendationRequestDto,
+    );
   }
 
   @Post('analyze-crop-disease')

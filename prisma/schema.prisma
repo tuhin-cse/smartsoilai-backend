@@ -26,9 +26,10 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // Relations
-  otpCodes         Otp[]
+  otpCodes          Otp[]
   chatConversations ChatConversation[]
-  conversations    Conversation[]
+  conversations     Conversation[]
+  reports           Report[]
 
   @@map("users")
 }
@@ -94,4 +95,23 @@ enum MessageType {
   IMAGE
 
   @@map("message_types")
+}
+
+model Report {
+  id                       String   @id @default(cuid())
+  userId                   String
+  name                     String
+  date                     DateTime
+  sensorData               Json
+  calculationData          Json
+  selectedCrop             Json
+  cropRecommendations      Json[]
+  fertilizerRecommendation Json
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
 }
