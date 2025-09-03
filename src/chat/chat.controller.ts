@@ -2,7 +2,7 @@ import {
   Body,
   Controller,
   Delete,
-  Get,
+  Get, HttpCode,
   Param,
   ParseIntPipe,
   Post,
@@ -36,11 +36,12 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 @ApiTags('Chat')
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+@ApiBearerAuth('access-token')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post('message')
+  @HttpCode(200)
   @ApiOperation({
     summary: 'Send a message to the AI assistant',
     description:
@@ -299,6 +300,7 @@ export class ChatController {
   }
 
   @Post('calculate-fertilizer')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Calculate fertilizer recommendations using AI' })
   @ApiResponse({
     status: 200,
@@ -324,6 +326,7 @@ export class ChatController {
   }
 
   @Post('crop-recommendations')
+  @HttpCode(200)
   @ApiOperation({
     summary: 'Get crop recommendations based on soil sensor data',
   })
@@ -353,6 +356,7 @@ export class ChatController {
   }
 
   @Post('analyze-crop-disease')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Analyze crop disease from leaf image using AI' })
   @ApiResponse({
     status: 200,
