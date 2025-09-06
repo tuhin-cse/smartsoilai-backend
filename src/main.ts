@@ -8,11 +8,14 @@ import {
   HttpExceptionFilter,
   ValidationExceptionFilter,
 } from './filters';
+import { json } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
+
+  app.use(json({ limit: '5mb' }));
 
   // Enable global validation
   app.useGlobalPipes(
