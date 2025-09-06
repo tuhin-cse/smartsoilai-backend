@@ -679,7 +679,81 @@ Provide JSON format:
     }
 
     try {
-      const prompt = `Analyze this crop image for diseases, health, hydration, and nutrients. Provide JSON format with results and advice.`;
+      const prompt = `
+You are an expert agricultural pathologist and plant disease specialist. Analyze the provided image of a crop leaf to detect any diseases, deficiencies, or health issues.
+
+Please provide a comprehensive analysis in the following JSON format:
+
+{
+  "diseaseAnalysis": {
+    "results": [
+      {
+        "title": "Disease Detection",
+        "description": "Detailed analysis of any diseases found or confirmation of healthy condition"
+      },
+      {
+        "title": "Health Condition", 
+        "description": "Overall assessment of plant health and any issues identified"
+      },
+      {
+        "title": "Hydration Condition",
+        "description": "Assessment of plant hydration status and watering recommendations"
+      },
+      {
+        "title": "Nutrient Status",
+        "description": "Analysis of any visible nutrient deficiencies or excesses"
+      }
+    ],
+    "advices": [
+      {
+        "key": "fertilizer",
+        "advices": [
+          {
+            "title": "Specific fertilizer recommendation",
+            "description": "Detailed application instructions, timing, and benefits"
+          }
+        ]
+      },
+      {
+        "key": "watering", 
+        "advices": [
+          {
+            "title": "Watering schedule and technique",
+            "description": "Specific watering recommendations with timing and frequency"
+          }
+        ]
+      },
+      {
+        "key": "pest_control",
+        "advices": [
+          {
+            "title": "Pest management strategy",
+            "description": "Preventive and treatment measures for pest control"
+          }
+        ]
+      },
+      {
+        "key": "location",
+        "advices": [
+          {
+            "title": "Environmental and location factors",
+            "description": "Recommendations for optimal growing conditions"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+Focus on:
+1. Comprehensive plant health assessment
+2. Practical fertilizer recommendations with specific products and quantities
+3. Optimal watering schedules and techniques
+4. Pest prevention and control strategies
+5. Environmental factors and location considerations
+
+Be specific about products, application methods, timing, and quantities. Provide actionable advice that farmers can implement immediately.
+`;
 
       const response = await fetch(this.openaiApiUrl, {
         method: 'POST',
@@ -714,17 +788,26 @@ Provide JSON format:
       }
 
       const data: any = await response.json();
-      const aiResponse = data.choices[0].message.content;
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const content: string = data.choices[0].message.content;
 
       let diseaseAnalysis;
       try {
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsedResponse = JSON.parse(jsonMatch[0]);
-          diseaseAnalysis = parsedResponse.diseaseAnalysis;
-        } else {
-          throw new Error('No JSON found');
+        let jsonContent = content;
+        if (content.includes('```json')) {
+          jsonContent = content.split('```json')[1].split('```')[0];
         }
+        const parsedResponse: {
+          diseaseAnalysis: {
+            results: { title: string; description: string }[];
+            advices: {
+              key: string;
+              advices: { title: string; description: string }[];
+            }[];
+          };
+        } = JSON.parse(jsonContent.trim());
+        diseaseAnalysis = parsedResponse['diseaseAnalysis'];
       } catch (parseError) {
         // Fallback analysis
         diseaseAnalysis = {
